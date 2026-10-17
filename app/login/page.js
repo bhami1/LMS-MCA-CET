@@ -48,8 +48,19 @@ export default function LoginPage() {
     checkExistingSession();
   }, [router]);
 
+// Safe async wrapper with timeout to prevent stuck promises
+function withTimeout(promise, ms = 7000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Connection timed out. Please check your network or try again.')), ms)
+    ),
+  ]);
+}
+
   const updateField = (key) => (e) => {
-    setForm({ ...form, [key]: e.target.value });
+    if (busy) setBusy(false);
+    setForm((prev) => ({ ...prev, [key]: e.target.value }));
   };
 
   async function handleSubmit(e) {
@@ -57,139 +68,167 @@ export default function LoginPage() {
     setBusy(true);
     setMsg({ text: '', type: '' });
 
-    const rawId = form.identifier.trim();
-    const isLibrarianCreds =
-      (rawId.toLowerCase() === 'librarianmcadepartment' ||
-        rawId.toLowerCase() === 'librarianmcadepartment@cet.ac.in') &&
-      form.password === '2628MCALIB';
+    // Safety timeout: ensures button never remains stuck longer than 8 seconds
+    const safetyTimer = setTimeout(() => {
+      setBusy(false);
+    }, 8000);
 
-    // 1. Handling for Designated Librarian Credentials
-    if (isLibrarianCreds) {
-      const email = 'librarianmcadepartment@cet.ac.in';
-      let librarianProfile = {
-        id: 'librarian-mca-dept',
-        full_name: 'MCA Department Librarian',
-        roll_number: 'LIB-MCA-01',
-        role: 'librarian',
-        email,
-      };
+    try {
+      const rawId = form.identifier.trim();
+      const isLibrarianCreds =
+        (rawId.toLowerCase() === 'librarianmcadepartment' ||
+          rawId.toLowerCase() === 'librarianmcadepartment@cet.ac.in') &&
+        form.password === '2628MCALIB';
 
-      // Authenticate with Supabase
-      try {
-        let { data: authData, error: signInErr } = await supabase.auth.signInWithPassword({
+      // 1. Handling for Designated Librarian Credentials
+      if (isLibrarianCreds) {
+        const email = 'librarianmcadepartment@cet.ac.in';
+        let librarianProfile = {
+          id: 'librarian-mca-dept',
+          full_name: 'MCA Department Librarian',
+          roll_number: 'LIB-MCA-01',
+          role: 'librarian',
           email,
-          password: form.password,
-        });
+        };
 
-        if (signInErr) {
-          // Attempt signup if user not created yet
-          const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-            email,
-            password: form.password,
-            options: {
-              data: {
+        // Authenticate with Supabase with timeout protection
+        try {
+          let { data: authData, error: signInErr } = await withTimeout(
+            supabase.auth.signInWithPassword({
+              email,
+              password: form.password,
+            }),
+            5000
+          );
+
+          if (signInErr) {
+            // Attempt signup if user not created yet
+            const { data: signUpData, error: signUpErr } = await withTimeout(
+              supabase.auth.signUp({
+                email,
+                password: form.password,
+                options: {
+                  data: {
+                    full_name: 'MCA Department Librarian',
+                    roll_number: 'LIB-MCA-01',
+                    role: 'librarian',
+                  },
+                },
+              }),
+              5000
+            );
+
+            if (!signUpErr && signUpData?.user) {
+              authData = signUpData;
+            }
+          }
+
+          if (authData?.user) {
+            librarianProfile.id = authData.user.id;
+            // Ensure profile role is librarian
+            await withTimeout(
+              supabase.from('profiles').upsert({
+                id: authData.user.id,
                 full_name: 'MCA Department Librarian',
                 roll_number: 'LIB-MCA-01',
                 role: 'librarian',
+              }),
+              4000
+            );
+          }
+        } catch (supaErr) {
+          console.warn('Supabase librarian authentication note:', supaErr);
+        }
+
+        // Save session
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('lms_local_profile', JSON.stringify(librarianProfile));
+        }
+
+        setMsg({ text: 'Librarian access granted! Redirecting...', type: 'success' });
+        router.replace('/librarian');
+        return;
+      }
+
+      // 2. Standard Student or Staff Authentication via Supabase
+      const emailToUse = rawId.includes('@') ? rawId : `${rawId}@cet.ac.in`;
+
+      if (mode === 'signup') {
+        const { data, error } = await withTimeout(
+          supabase.auth.signUp({
+            email: emailToUse,
+            password: form.password,
+            options: {
+              data: {
+                full_name: form.full_name.trim(),
+                roll_number: form.roll_number.trim(),
+                role: 'student',
               },
             },
-          });
-
-          if (!signUpErr && signUpData?.user) {
-            authData = signUpData;
-          }
-        }
-
-        if (authData?.user) {
-          librarianProfile.id = authData.user.id;
-          // Ensure profile role is librarian
-          await supabase.from('profiles').upsert({
-            id: authData.user.id,
-            full_name: 'MCA Department Librarian',
-            roll_number: 'LIB-MCA-01',
-            role: 'librarian',
-          });
-        }
-      } catch (supaErr) {
-        console.warn('Supabase librarian authentication note:', supaErr);
-      }
-
-      // Save session
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('lms_local_profile', JSON.stringify(librarianProfile));
-      }
-
-      setMsg({ text: 'Librarian access granted! Redirecting...', type: 'success' });
-      router.replace('/librarian');
-      return;
-    }
-
-    // 2. Standard Student or Staff Authentication via Supabase
-    const emailToUse = rawId.includes('@') ? rawId : `${rawId}@cet.ac.in`;
-
-    try {
-      if (mode === 'signup') {
-        const { data, error } = await supabase.auth.signUp({
-          email: emailToUse,
-          password: form.password,
-          options: {
-            data: {
-              full_name: form.full_name.trim(),
-              roll_number: form.roll_number.trim(),
-              role: 'student',
-            },
-          },
-        });
+          }),
+          7000
+        );
 
         if (error) {
           setMsg({ text: error.message, type: 'error' });
-          setBusy(false);
           return;
         }
 
-        if (!data.session) {
+        if (!data?.session) {
           setMsg({
             text: 'Account created! Please check your email inbox if verification is enabled, or sign in.',
             type: 'info',
           });
-          setBusy(false);
           return;
         }
 
         router.replace('/student');
       } else {
         // Sign In
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: emailToUse,
-          password: form.password,
-        });
+        const { data, error } = await withTimeout(
+          supabase.auth.signInWithPassword({
+            email: emailToUse,
+            password: form.password,
+          }),
+          7000
+        );
 
         if (error) {
           setMsg({ text: error.message, type: 'error' });
-          setBusy(false);
           return;
         }
 
         if (!data?.user) {
           setMsg({ text: 'Unable to authenticate. Please check your credentials.', type: 'error' });
-          setBusy(false);
           return;
         }
 
         // Check user role from profiles table
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', data.user.id)
-          .maybeSingle();
+        let role = data.user.user_metadata?.role || 'student';
+        try {
+          const { data: profile } = await withTimeout(
+            supabase
+              .from('profiles')
+              .select('role')
+              .eq('id', data.user.id)
+              .maybeSingle(),
+            4000
+          );
+          if (profile?.role) role = profile.role;
+        } catch (pe) {
+          console.warn('Profile role fetch note:', pe);
+        }
 
-        const role = profile?.role || data.user.user_metadata?.role || 'student';
         router.replace(role === 'librarian' ? '/librarian' : '/student');
       }
     } catch (err) {
       console.error('Authentication error:', err);
-      setMsg({ text: 'Authentication error occurred. Please verify your credentials.', type: 'error' });
+      setMsg({
+        text: err?.message || 'Authentication error occurred. Please verify your credentials.',
+        type: 'error',
+      });
     } finally {
+      clearTimeout(safetyTimer);
       setBusy(false);
     }
   }
@@ -340,6 +379,7 @@ export default function LoginPage() {
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
+                    setBusy(false);
                     setMsg({ text: '', type: '' });
                     setMode('signup');
                   }}
@@ -354,6 +394,7 @@ export default function LoginPage() {
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
+                    setBusy(false);
                     setMsg({ text: '', type: '' });
                     setMode('login');
                   }}

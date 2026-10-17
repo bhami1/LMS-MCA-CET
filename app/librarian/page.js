@@ -69,8 +69,15 @@ export default function LibrarianDashboard() {
 
       if (!bErr && bData) {
         setBooks(bData);
+        try {
+          localStorage.setItem('lms_local_books', JSON.stringify(bData));
+        } catch (e) {}
       } else if (bErr) {
         console.error('Books query error:', bErr);
+        try {
+          const stored = localStorage.getItem('lms_local_books');
+          if (stored) setBooks(JSON.parse(stored));
+        } catch (e) {}
       }
 
       // 2. Load borrowings (Try joined query, fallback to manual join if PostgREST cache differs)
@@ -199,6 +206,14 @@ export default function LibrarianDashboard() {
     const { error } = await supabase.from('books').insert(newBook);
     if (!error) {
       setBookForm({ title: '', author: '', isbn: '', category: '', copies: 1 });
+    } else {
+      try {
+        const stored = localStorage.getItem('lms_local_books');
+        const currentList = stored ? JSON.parse(stored) : books;
+        const updatedList = [{ ...newBook, id: Date.now() }, ...currentList];
+        setBooks(updatedList);
+        localStorage.setItem('lms_local_books', JSON.stringify(updatedList));
+      } catch (e) {}
     }
     setBusy(false);
     notify(error, 'Book added to library catalog.');
@@ -210,6 +225,14 @@ export default function LibrarianDashboard() {
     setBusy(true);
 
     const { error } = await supabase.from('books').delete().eq('id', id);
+    try {
+      const stored = localStorage.getItem('lms_local_books');
+      if (stored) {
+        const currentList = JSON.parse(stored);
+        const filtered = currentList.filter((b) => b.id !== id);
+        localStorage.setItem('lms_local_books', JSON.stringify(filtered));
+      }
+    } catch (e) {}
     setBusy(false);
     notify(error, `Book "${title}" deleted.`);
   }
@@ -390,13 +413,6 @@ export default function LibrarianDashboard() {
             Logged in as <strong>{profile?.full_name || 'MCA Department Librarian'}</strong> &bull; User ID: <code>librarianmcadepartment</code>
           </p>
         </div>
-        <button
-          type="button"
-          className="btn-logout"
-          onClick={() => logout(router)}
-        >
-          Sign Out
-        </button>
       </div>
 
       {/* Metric Cards */}

@@ -148,13 +148,6 @@ export default function StudentDashboard() {
             Welcome, <strong>{profile?.full_name}</strong> &bull; Roll Number: <code>{profile?.roll_number || 'N/A'}</code>
           </p>
         </div>
-        <button
-          type="button"
-          className="btn-logout"
-          onClick={() => logout(router)}
-        >
-          Sign Out
-        </button>
       </div>
 
       {/* Metrics */}
@@ -195,8 +188,7 @@ export default function StudentDashboard() {
             My Borrowing History & Renewal Requests
           </h2>
           <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-            Protected by Row Level Security (Private to your account)
-          </span>
+              </span>
         </div>
 
         <div className="table-responsive">
