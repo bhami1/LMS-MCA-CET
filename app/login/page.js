@@ -310,7 +310,7 @@ function withTimeout(promise, ms = 7000) {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Rahul Sharma"
+                    placeholder="e.g. Kanimangalam Jagannathan Thampuran"
                     className="form-input"
                     value={form.full_name}
                     onChange={updateField('full_name')}
@@ -318,11 +318,11 @@ function withTimeout(promise, ms = 7000) {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">College Roll / Reg Number</label>
+                  <label className="form-label"> Roll Number / UserID</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. 23MCA104"
+                    placeholder="e.g. 26MCA24"
                     className="form-input"
                     value={form.roll_number}
                     onChange={updateField('roll_number')}
@@ -338,7 +338,7 @@ function withTimeout(promise, ms = 7000) {
               <input
                 type="text"
                 required
-                placeholder={mode === 'login' ? 'librarianmcadepartment or student email' : 'student@cet.ac.in'}
+                placeholder={mode === 'login' ? 'student email' : 'jagannathan@yahoo.com'}
                 className="form-input"
                 value={form.identifier}
                 onChange={updateField('identifier')}
@@ -351,7 +351,6 @@ function withTimeout(promise, ms = 7000) {
                 type="password"
                 required
                 minLength={6}
-                placeholder="••••••••"
                 className="form-input"
                 value={form.password}
                 onChange={updateField('password')}

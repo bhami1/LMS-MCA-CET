@@ -68,7 +68,7 @@ export default function WelcomePage() {
           </div>
  
           <h1 className="hero-title">College of Engineering Trivandrum</h1>
-          <h2 className="hero-subtitle">Department Library Management System</h2>
+          <h2 className="hero-subtitle">MCA Department Library Management System</h2>
  
           <div className="hero-quote-box">
             <p className="hero-quote-text">
@@ -90,25 +90,25 @@ export default function WelcomePage() {
         <div className="feature-cards-grid">
           <div className="feature-card">
             <span className="feature-card-number">01</span>
-            <h3 className="feature-card-title">Comprehensive Catalog</h3>
+            <h3 className="feature-card-title">Vision</h3>
             <p className="feature-card-desc">
-              Browse textbooks, research literature, references, and journals curated for MCA and engineering excellence.
+              The Department Library at CET is dedicated to providing students with a comprehensive collection of academic resources, fostering a culture of learning, and supporting research and innovation in the field of computer applications.
             </p>
           </div>
  
           <div className="feature-card">
             <span className="feature-card-number">02</span>
-            <h3 className="feature-card-title">Easy Online Renewals</h3>
+            <h3 className="feature-card-title">Mission</h3>
             <p className="feature-card-desc">
-              Students can view due dates, track borrowing history, and submit book renewal requests directly from their portal.
+              Our mission is to empower students with access to a diverse range of books, journals, and digital resources, while promoting responsible borrowing practices and ensuring the library remains a welcoming space for academic growth and collaboration.
             </p>
           </div>
  
           <div className="feature-card">
             <span className="feature-card-number">03</span>
-            <h3 className="feature-card-title">Privacy & Security</h3>
+            <h3 className="feature-card-title">Working Hours</h3>
             <p className="feature-card-desc">
-              Row Level Security ensures students can only view their own borrowing records, with centralized oversight by the librarian.
+              Library is open everyday from 12-1pm and 4-5pm. It is also open during every free hours. We are ready to open the library other than the working hours if you request us. Please contact the librarian for any special requests or assistance.Thankyou. 
             </p>
           </div>
         </div>
