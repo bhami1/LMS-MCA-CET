@@ -267,17 +267,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ==============================================================================
--- 9. SEED DATA & HOW TO SET UP THE LIBRARIAN ACCOUNT
--- ==============================================================================
--- Credentials for librarian:
--- User ID: librarianmcadepartment (mapped to librarianmcadepartment@cet.ac.in)
--- Password: 2628MCALIB
---
--- To ensure librarian privileges in Supabase, execute in SQL Editor:
--- UPDATE public.profiles
--- SET role = 'librarian', full_name = 'MCA Department Librarian'
--- WHERE id = (SELECT id FROM auth.users WHERE email = 'librarianmcadepartment@cet.ac.in');
+
 --
 -- Sample Starter Books:
 INSERT INTO public.books (title, author, isbn, category, total_copies, available_copies)
