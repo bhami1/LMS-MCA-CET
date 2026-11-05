@@ -18,31 +18,29 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   // If already logged in, redirect to dashboard immediately
+// If already logged in, verify the role using the profiles table
   useEffect(() => {
     async function checkExistingSession() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', session.user.id)
-            .maybeSingle();
-          const role = profile?.role || session.user.user_metadata?.role || 'student';
-          router.replace(role === 'librarian' ? '/librarian' : '/student');
-          return;
-        }
-      } catch (e) {}
+        const { data: { session }, error: sessionError } =
+          await supabase.auth.getSession();
 
-      try {
-        const stored = typeof window !== 'undefined' ? localStorage.getItem('lms_local_profile') : null;
-        if (stored) {
-          const localProfile = JSON.parse(stored);
-          if (localProfile?.role) {
-            router.replace(localProfile.role === 'librarian' ? '/librarian' : '/student');
-          }
-        }
-      } catch (e) {}
+        if (sessionError || !session?.user) return;
+
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .maybeSingle();
+
+        if (error || !profile?.role) return;
+
+        router.replace(
+          profile.role === 'librarian' ? '/librarian' : '/student'
+        );
+      } catch (error) {
+        console.error('Session verification failed:', error);
+      }
     }
 
     checkExistingSession();
@@ -68,91 +66,17 @@ function withTimeout(promise, ms = 7000) {
     setBusy(true);
     setMsg({ text: '', type: '' });
 
-    // Safety timeout: ensures button never remains stuck longer than 8 seconds
     const safetyTimer = setTimeout(() => {
       setBusy(false);
     }, 8000);
 
     try {
       const rawId = form.identifier.trim();
-      const isLibrarianCreds =
-        (rawId.toLowerCase() === 'librarianmcadepartment' ||
-          rawId.toLowerCase() === 'librarianmcadepartment@cet.ac.in') &&
-        form.password === '2628MCALIB';
+      const emailToUse = rawId.includes('@')
+        ? rawId
+        : `${rawId}@cet.ac.in`;
 
-      // 1. Handling for Designated Librarian Credentials
-      if (isLibrarianCreds) {
-        const email = 'librarianmcadepartment@cet.ac.in';
-        let librarianProfile = {
-          id: 'librarian-mca-dept',
-          full_name: 'MCA Department Librarian',
-          roll_number: 'LIB-MCA-01',
-          role: 'librarian',
-          email,
-        };
-
-        // Authenticate with Supabase with timeout protection
-        try {
-          let { data: authData, error: signInErr } = await withTimeout(
-            supabase.auth.signInWithPassword({
-              email,
-              password: form.password,
-            }),
-            5000
-          );
-
-          if (signInErr) {
-            // Attempt signup if user not created yet
-            const { data: signUpData, error: signUpErr } = await withTimeout(
-              supabase.auth.signUp({
-                email,
-                password: form.password,
-                options: {
-                  data: {
-                    full_name: 'MCA Department Librarian',
-                    roll_number: 'LIB-MCA-01',
-                    role: 'librarian',
-                  },
-                },
-              }),
-              5000
-            );
-
-            if (!signUpErr && signUpData?.user) {
-              authData = signUpData;
-            }
-          }
-
-          if (authData?.user) {
-            librarianProfile.id = authData.user.id;
-            // Ensure profile role is librarian
-            await withTimeout(
-              supabase.from('profiles').upsert({
-                id: authData.user.id,
-                full_name: 'MCA Department Librarian',
-                roll_number: 'LIB-MCA-01',
-                role: 'librarian',
-              }),
-              4000
-            );
-          }
-        } catch (supaErr) {
-          console.warn('Supabase librarian authentication note:', supaErr);
-        }
-
-        // Save session
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('lms_local_profile', JSON.stringify(librarianProfile));
-        }
-
-        setMsg({ text: 'Librarian access granted! Redirecting...', type: 'success' });
-        router.replace('/librarian');
-        return;
-      }
-
-      // 2. Standard Student or Staff Authentication via Supabase
-      const emailToUse = rawId.includes('@') ? rawId : `${rawId}@cet.ac.in`;
-
+      // Student registration — unchanged
       if (mode === 'signup') {
         const { data, error } = await withTimeout(
           supabase.auth.signUp({
@@ -183,48 +107,60 @@ function withTimeout(promise, ms = 7000) {
         }
 
         router.replace('/student');
-      } else {
-        // Sign In
-        const { data, error } = await withTimeout(
-          supabase.auth.signInWithPassword({
-            email: emailToUse,
-            password: form.password,
-          }),
-          7000
-        );
-
-        if (error) {
-          setMsg({ text: error.message, type: 'error' });
-          return;
-        }
-
-        if (!data?.user) {
-          setMsg({ text: 'Unable to authenticate. Please check your credentials.', type: 'error' });
-          return;
-        }
-
-        // Check user role from profiles table
-        let role = data.user.user_metadata?.role || 'student';
-        try {
-          const { data: profile } = await withTimeout(
-            supabase
-              .from('profiles')
-              .select('role')
-              .eq('id', data.user.id)
-              .maybeSingle(),
-            4000
-          );
-          if (profile?.role) role = profile.role;
-        } catch (pe) {
-          console.warn('Profile role fetch note:', pe);
-        }
-
-        router.replace(role === 'librarian' ? '/librarian' : '/student');
+        return;
       }
+
+      // Student and librarian login — both use Supabase Auth
+      const { data, error } = await withTimeout(
+        supabase.auth.signInWithPassword({
+          email: emailToUse,
+          password: form.password,
+        }),
+        7000
+      );
+
+      if (error) {
+        setMsg({ text: error.message, type: 'error' });
+        return;
+      }
+
+      if (!data?.user) {
+        setMsg({
+          text: 'Unable to authenticate. Please check your credentials.',
+          type: 'error',
+        });
+        return;
+      }
+
+      // Verify role using the database, not user metadata
+      const { data: profile, error: profileError } = await withTimeout(
+        supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .maybeSingle(),
+        4000
+      );
+
+      if (profileError || !profile?.role) {
+        await supabase.auth.signOut();
+
+        setMsg({
+          text: 'Unable to verify your account role. Please contact the librarian.',
+          type: 'error',
+        });
+        return;
+      }
+
+      router.replace(
+        profile.role === 'librarian' ? '/librarian' : '/student'
+      );
+
     } catch (err) {
       console.error('Authentication error:', err);
+
       setMsg({
-        text: err?.message || 'Authentication error occurred. Please verify your credentials.',
+        text: err?.message || 'Authentication error occurred. Please try again.',
         type: 'error',
       });
     } finally {
