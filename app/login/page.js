@@ -524,11 +524,11 @@ function withTimeout(promise, ms = 7000) {
               {forgotStep === 1 && (
                 <form onSubmit={handleSendOtp}>
                   <div className="form-group">
-                    <label className="form-label">User ID or Email Address</label>
+                    <label className="form-label">Email Address</label>
                     <input
                       type="text"
                       required
-                      placeholder="e.g. 26MCA24 or student@cet.ac.in"
+                      placeholder="e.g. student@cet.ac.in"
                       className="form-input"
                       value={resetEmail}
                       onChange={(e) => {
@@ -681,7 +681,7 @@ function withTimeout(promise, ms = 7000) {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label"> Roll Number / UserID</label>
+                    <label className="form-label"> Roll Number </label>
                     <input
                       type="text"
                       required
@@ -696,12 +696,12 @@ function withTimeout(promise, ms = 7000) {
 
               <div className="form-group">
                 <label className="form-label">
-                  {mode === 'login' ? 'User ID or Email Address' : 'Email Address'}
+                  {mode === 'login' ? 'Email Address' : 'Email Address'}
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder={mode === 'login' ? 'student email' : 'jagannathan@yahoo.com'}
+                  placeholder={mode === 'login' ? 'jagannathan@yahoo.com' : 'jagannathan@yahoo.com'}
                   className="form-input"
                   value={form.identifier}
                   onChange={updateField('identifier')}
@@ -710,7 +710,8 @@ function withTimeout(promise, ms = 7000) {
 
               <div className="form-group">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <label className="form-label" style={{ marginBottom: 0 }}>Password</label>
+                  <label className="form-label" style={{ marginBottom: 0 }}>Password</label> 
+                  
                   {mode === 'login' && (
                     <a
                       href="#"
@@ -736,6 +737,7 @@ function withTimeout(promise, ms = 7000) {
                 </div>
                 <input
                   type="password"
+                  placeholder="Unnimaya@1234"
                   required
                   minLength={6}
                   className="form-input"
